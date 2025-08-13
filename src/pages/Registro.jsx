@@ -11,6 +11,7 @@ function Registro() {
 
   const onSubmit = (e) => {
     e.preventDefault();
+    // Simulación: guardar en localStorage
     const users = JSON.parse(localStorage.getItem("users") || "[]");
     users.push(form);
     localStorage.setItem("users", JSON.stringify(users));
@@ -23,14 +24,13 @@ function Registro() {
     <div>
       <Header />
       <main className="form-container">
-        <h2>Registrarse</h2>
-
-        <span className="sr-only" role="status" aria-live="polite" />
+        <h2 className="title-lg" style={{ fontSize: "1.6rem" }}>Registrarse</h2>
 
         <form onSubmit={onSubmit} noValidate>
           <label htmlFor="reg-nombre">Nombre:</label>
           <input
             id="reg-nombre"
+            className="input"
             name="nombre"
             value={form.nombre}
             onChange={onChange}
@@ -41,6 +41,7 @@ function Registro() {
           <label htmlFor="reg-email">Correo:</label>
           <input
             id="reg-email"
+            className="input"
             type="email"
             name="email"
             value={form.email}
@@ -52,6 +53,7 @@ function Registro() {
           <label htmlFor="reg-pass">Contraseña:</label>
           <input
             id="reg-pass"
+            className="input"
             type="password"
             name="password"
             value={form.password}
@@ -60,7 +62,9 @@ function Registro() {
             required
           />
 
-          <button type="submit" aria-label="Crear cuenta nueva">Crear cuenta</button>
+          <button className="btn btn-primary" type="submit" aria-label="Crear cuenta nueva">
+            Crear cuenta
+          </button>
         </form>
       </main>
     </div>

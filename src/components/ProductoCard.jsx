@@ -1,25 +1,38 @@
 import { Link, useLocation } from "react-router-dom";
+import { useCart } from "../context/CartContext";
+import { useToast } from "../context/ToastContext";
 
 function ProductoCard({ producto }) {
-  const location = useLocation(); // para leer el ?cat actual
+  const location = useLocation();
+  const { addItem } = useCart();
+  const { showToast } = useToast();
+  const disponible = producto.estado === "disponible";
 
   return (
-    <div style={{ border: "1px solid #ccc", padding: "1rem", marginBottom: "1rem", borderRadius: "8px", backgroundColor: "#f9f9f9", width: "300px" }}>
-      <img src={producto.imagen} alt={producto.nombre} style={{ width: "100%", height: "200px", objectFit: "cover" }} />
-      <h3>{producto.nombre}</h3>
-      <p><strong>Precio:</strong> ${producto.precio}</p>
-      <p><strong>Categoría:</strong> {producto.categoria}</p>
-      <p>
-        <strong>Estado:</strong>{" "}
-        <span style={{ color: producto.estado === "disponible" ? "green" : "red" }}>
-          {producto.estado}
-        </span>
-      </p>
+    <div className="card" style={{ width: 300 }}>
+      <img className="card-img" src={producto.imagen} alt={producto.nombre} />
+      <div className="card-body">
+        <h3 style={{ margin: "0 0 .25rem 0" }}>{producto.nombre}</h3>
+        <p className="muted" style={{ margin: 0 }}><strong>Precio:</strong> ${producto.precio}</p>
+        <p className="muted" style={{ margin: 0 }}><strong>Categoría:</strong> {producto.categoria}</p>
+        <p style={{ marginTop: ".4rem" }}>
+          <span className={`chip ${disponible ? "chip--ok" : "chip--off"}`}>
+            {producto.estado}
+          </span>
+        </p>
 
-      {/* Mantiene el query ?cat=... */}
-      <Link to={`/producto/${producto.id}${location.search}`}>Ver detalle</Link>
+        <div style={{ display:"flex", gap:".5rem", justifyContent:"space-between" }}>
+          <Link to={`/producto/${producto.id}${location.search}`}>Ver detalle</Link>
+          <button
+            className="btn btn-primary"
+            disabled={!disponible}
+            onClick={() => { addItem(producto, 1); showToast("Producto añadido al carrito","success"); }}
+          >
+            Añadir
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
-
 export default ProductoCard;

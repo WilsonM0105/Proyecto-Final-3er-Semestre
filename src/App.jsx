@@ -4,15 +4,15 @@ import ProductoDetalle from "./pages/ProductoDetalle";
 import Login from "./pages/Login";
 import Registro from "./pages/Registro";
 import Admin from "./pages/Admin";
+import Carrito from "./pages/Carrito";
+import Resumen from "./pages/Resumen";
+import NotFound from "./pages/NotFound";
 import { useAuth } from "./context/AuthContext";
 
-// Ruta protegida
 function ProtectedRoute({ children, role }) {
   const { user } = useAuth();
-
   if (!user) return <Navigate to="/login" replace />;
   if (role && user.role !== role) return <Navigate to="/" replace />;
-
   return children;
 }
 
@@ -31,6 +31,9 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      <Route path="/carrito" element={<Carrito />} />
+      <Route path="/resumen" element={<Resumen />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }

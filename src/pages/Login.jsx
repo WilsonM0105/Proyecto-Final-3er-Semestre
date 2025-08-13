@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
 import Header from "../components/Header";
+import { useAuth } from "../context/AuthContext";
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -20,15 +20,13 @@ function Login() {
     <div>
       <Header />
       <main className="form-container">
-        <h2>Iniciar Sesión</h2>
-
-        {/* Región para mensajes dinámicos si luego agregas validaciones */}
-        <span className="sr-only" role="status" aria-live="polite" />
+        <h2 className="title-lg" style={{ fontSize: "1.6rem" }}>Iniciar Sesión</h2>
 
         <form onSubmit={handleSubmit} noValidate>
           <label htmlFor="login-email">Correo:</label>
           <input
             id="login-email"
+            className="input"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -39,6 +37,7 @@ function Login() {
           <label htmlFor="login-pass">Contraseña:</label>
           <input
             id="login-pass"
+            className="input"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -46,7 +45,9 @@ function Login() {
             required
           />
 
-          <button type="submit" aria-label="Ingresar a la cuenta">Ingresar</button>
+          <button className="btn btn-primary" type="submit" aria-label="Ingresar a la cuenta">
+            Ingresar
+          </button>
         </form>
       </main>
     </div>
