@@ -1,32 +1,51 @@
+import { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { productos } from "../data/productos";
 import Header from "../components/Header";
+import { apiGet } from "../api/client";
 import { useCart } from "../context/CartContext";
-import { useToast } from "../context/ToastContext";
 
 function ProductoDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { search } = useLocation();
-  const producto = productos.find((p) => p.id === parseInt(id, 10));
+  const location = useLocation();
+  const search = location.search;
   const { addItem } = useCart();
-  const { showToast } = useToast();
+  const [producto, setProducto] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const handleVolver = () => {
     if (window.history.length > 1) navigate(-1);
     else navigate(`/${search || ""}`, { replace: true });
   };
 
+  useEffect(() => {
+    setLoading(true);
+    apiGet(`/api/productos/${id}`)
+      .then(setProducto)
+      .catch(() => setProducto(null))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div>
+        <Header />
+        <main className="container"><p className="muted">Cargando…</p></main>
+      </div>
+    );
+  }
+
   if (!producto) {
     return (
       <div>
         <Header />
-        <main className="container section">
-          <p>Producto no encontrado.</p>
-          <div style={{ display:"flex", gap:".5rem" }}>
-            <button className="btn btn-secondary" onClick={handleVolver}>← Volver</button>
-            <button className="btn btn-primary" onClick={() => navigate("/")}>Volver al inicio</button>
-          </div>
+        <main className="container">
+          <section className="section">
+            <p>Producto no encontrado.</p>
+            <button className="btn btn-secondary" type="button" onClick={handleVolver}>
+              ← Volver
+            </button>
+          </section>
         </main>
       </div>
     );
@@ -37,35 +56,50 @@ function ProductoDetalle() {
   return (
     <div>
       <Header />
-      <main className="container section" style={{ maxWidth: 760 }}>
-        <div style={{ marginBottom: ".75rem", display:"flex", gap:".5rem" }}>
-          <button className="btn btn-secondary" onClick={handleVolver}>← Volver</button>
-          <button className="btn btn-primary" onClick={() => navigate("/")}>Volver al inicio</button>
+      <main className="container" style={{ maxWidth: 800 }}>
+        <div style={{ marginBottom: ".75rem" }}>
+          <button className="btn btn-secondary" type="button" onClick={handleVolver}>
+            ← Volver
+          </button>
         </div>
 
-        <img className="card-img" src={producto.imagen} alt={`Imagen del producto ${producto.nombre}`} style={{ borderRadius: "12px" }} />
-        <h2 className="title-lg">{producto.nombre}</h2>
-        <p className="muted"><strong>Descripción:</strong> {producto.descripcion}</p>
-        <p className="muted">
-          <strong>Precio:</strong> <span style={{ color:"var(--success)", fontWeight:700 }}>${producto.precio}</span>
-        </p>
-        <p className="muted"><strong>Categoría:</strong> {producto.categoria}</p>
-        <p>
-          <strong>Estado:</strong>{" "}
-          <span className={`chip ${esDisponible ? "chip--ok":"chip--off"}`}>
-            {esDisponible ? "Disponible" : "No disponible"}
-          </span>
-        </p>
+        <section className="section">
+          <img
+            className="detail-img"
+            src={producto.imagen}
+            alt={producto.nombre}
+            loading="lazy"
+          />
 
-        <div>
+          <h2 style={{ marginTop: "1rem" }}>{producto.nombre}</h2>
+          <p><strong>Descripción:</strong> {producto.descripcion}</p>
+          <p><strong>Precio:</strong> ${Number(producto.precio).toFixed(2)}</p>
+          <p><strong>Categoría:</strong> {producto.categoria}</p>
+          <p>
+            <strong>Estado:</strong>{" "}
+            <span className={`chip ${esDisponible ? "chip--ok" : "chip--off"}`}>
+              {esDisponible ? "Disponible" : "No disponible"}
+            </span>
+          </p>
+
           <button
             className="btn btn-primary"
             disabled={!esDisponible}
-            onClick={() => { addItem(producto, 1); showToast("Producto añadido al carrito","success"); }}
+            onClick={() =>
+              addItem(
+                {
+                  id: producto.id,
+                  nombre: producto.nombre,
+                  precio: Number(producto.precio),
+                  imagen: producto.imagen,
+                },
+                1
+              )
+            }
           >
             Añadir al carrito
           </button>
-        </div>
+        </section>
       </main>
     </div>
   );

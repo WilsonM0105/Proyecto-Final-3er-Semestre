@@ -1,57 +1,54 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Header from "../components/Header";
+import { apiPost } from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import Header from "../components/Header";
 
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { login } = useAuth();
+  const { setSession } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const isAdmin = email.includes("admin");
-    login(email, password);
-    navigate(isAdmin ? "/admin" : "/");
+    try {
+      const { user, token } = await apiPost("/api/auth/login", { email, password });
+      setSession(user, token);
+      navigate(user.rol === "admin" ? "/admin" : "/");
+    } catch {
+      alert("Credenciales inválidas");
+    }
   };
 
   return (
     <div>
       <Header />
       <main className="form-container">
-        <h2 className="title-lg" style={{ fontSize: "1.6rem" }}>Iniciar Sesión</h2>
-
-        <form onSubmit={handleSubmit} noValidate>
-          <label htmlFor="login-email">Correo:</label>
+        <h2>Iniciar Sesión</h2>
+        <form onSubmit={handleSubmit}>
+          <label>Correo:</label>
           <input
-            id="login-email"
             className="input"
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
+            onChange={(e)=>setEmail(e.target.value)}
             required
           />
 
-          <label htmlFor="login-pass">Contraseña:</label>
+          <label>Contraseña:</label>
           <input
-            id="login-pass"
             className="input"
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
+            onChange={(e)=>setPassword(e.target.value)}
             required
           />
 
-          <button className="btn btn-primary" type="submit" aria-label="Ingresar a la cuenta">
-            Ingresar
-          </button>
+          <button className="btn btn-primary" type="submit">Ingresar</button>
         </form>
       </main>
     </div>
   );
 }
-
 export default Login;

@@ -1,81 +1,179 @@
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import { useCart } from "../context/CartContext";
-import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { apiPost } from "../api/client";
 
-function Carrito() {
-  const { items, inc, dec, setQty, removeItem, clearCart, totalItems, totalPrice } = useCart();
+function LineaCarrito({ item, onDec, onInc, onSetQty, onRemove }) {
+  const subtotal = useMemo(() => (item.precio * item.qty).toFixed(2), [item]);
+
+  return (
+    <li
+      style={{
+        display: "grid",
+        gridTemplateColumns: "64px 1fr auto",
+        gap: "1rem",
+        alignItems: "center",
+        padding: ".75rem 0",
+        borderBottom: "1px solid #e5e7eb"
+      }}
+    >
+      <img
+        src={item.imagen}
+        alt={item.nombre}
+        style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8 }}
+      />
+
+      <div>
+        <h4 style={{ margin: 0 }}>{item.nombre}</h4>
+        <small className="muted">Precio unitario: ${item.precio}</small>
+        <div style={{ marginTop: ".35rem", display: "flex", gap: ".5rem", alignItems: "center" }}>
+          <button className="btn btn-secondary" type="button" onClick={() => onDec(item.id)} aria-label={`Disminuir ${item.nombre}`}>
+            −
+          </button>
+          <input
+            className="input"
+            type="number"
+            min={1}
+            value={item.qty}
+            onChange={(e) => onSetQty(item.id, Math.max(1, parseInt(e.target.value || "1", 10)))}
+            style={{ width: 80, textAlign: "center" }}
+            aria-label={`Cantidad de ${item.nombre}`}
+          />
+          <button className="btn btn-secondary" type="button" onClick={() => onInc(item.id)} aria-label={`Incrementar ${item.nombre}`}>
+            +
+          </button>
+        </div>
+      </div>
+
+      <div style={{ textAlign: "right" }}>
+        <div style={{ fontWeight: 600 }}>${subtotal}</div>
+        <button
+          className="btn btn-danger"
+          type="button"
+          onClick={() => onRemove(item.id)}
+          style={{ marginTop: ".35rem" }}
+          aria-label={`Eliminar ${item.nombre} del carrito`}
+        >
+          Eliminar
+        </button>
+      </div>
+    </li>
+  );
+}
+
+export default function Carrito() {
+  const { items, totalPrice, setQty, inc, dec, removeItem, clearCart } = useCart();
+  const { user, token } = useAuth();
   const navigate = useNavigate();
-  const currency = (n) => n.toLocaleString("es-EC", { style: "currency", currency: "USD" });
+
+  const [status, setStatus] = useState({ loading: false, error: "", ok: "" });
+
+  const handleCheckout = async () => {
+    if (!user || !token) {
+      alert("Debes iniciar sesión para comprar.");
+      navigate("/login");
+      return;
+    }
+    if (items.length === 0) return;
+
+    try {
+      setStatus({ loading: true, error: "", ok: "" });
+
+      // Backend espera: items: [{ producto_id, cantidad }]
+      const payload = {
+        items: items.map((i) => ({
+          producto_id: i.id,
+          cantidad: i.qty
+        }))
+      };
+
+      const { pedido_id } = await apiPost("/api/pedidos", payload, token);
+
+      const resumen = {
+        pedido_id,
+        total: totalPrice,
+        items
+      };
+
+      clearCart();
+      setStatus({ loading: false, error: "", ok: `Pedido #${pedido_id} creado` });
+      navigate("/resumen", { state: resumen });
+    } catch (e) {
+      console.error(e);
+      setStatus({
+        loading: false,
+        error: "Ocurrió un problema procesando tu pedido. Intenta nuevamente.",
+        ok: ""
+      });
+    }
+  };
 
   return (
     <div>
       <Header />
       <main className="container">
-        <h2 className="title-lg">Tu carrito</h2>
+        <h2 className="title-lg">🛒 Carrito</h2>
 
         {items.length === 0 ? (
-          <div className="section center muted">
-            El carrito está vacío.{" "}
-            <button className="btn btn-primary" onClick={() => navigate("/")}>Ir al catálogo</button>
-          </div>
+          <section className="section">
+            <p className="muted" style={{ margin: 0 }}>Tu carrito está vacío.</p>
+            <button className="btn btn-primary" style={{ marginTop: ".75rem" }} type="button" onClick={() => navigate("/")}>
+              Explorar productos
+            </button>
+          </section>
         ) : (
-          <>
-            <div className="section" style={{ overflowX:"auto" }}>
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Producto</th>
-                    <th>Precio</th>
-                    <th>Cantidad</th>
-                    <th>Subtotal</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((i) => (
-                    <tr key={i.id}>
-                      <td style={{ display:"flex", alignItems:"center", gap:".75rem" }}>
-                        <img src={i.imagen} alt={i.nombre} style={{ width:64, height:64, objectFit:"cover", borderRadius:8 }} />
-                        <span>{i.nombre}</span>
-                      </td>
-                      <td>{currency(i.precio)}</td>
-                      <td>
-                        <div style={{ display:"flex", alignItems:"center", gap:".4rem" }}>
-                          <button className="btn btn-secondary" onClick={() => dec(i.id)}>-</button>
-                          <input
-                            className="input"
-                            type="number" min="1"
-                            value={i.qty}
-                            onChange={(e)=> setQty(i.id, parseInt(e.target.value||"1",10))}
-                            style={{ width:70, textAlign:"center" }}
-                          />
-                          <button className="btn btn-secondary" onClick={() => inc(i.id)}>+</button>
-                        </div>
-                      </td>
-                      <td>{currency(i.qty * i.precio)}</td>
-                      <td>
-                        <button className="btn btn-danger" onClick={() => removeItem(i.id)}>Eliminar</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <section className="section">
+            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              {items.map((item) => (
+                <LineaCarrito
+                  key={item.id}
+                  item={item}
+                  onDec={dec}
+                  onInc={inc}
+                  onSetQty={setQty}
+                  onRemove={removeItem}
+                />
+              ))}
+            </ul>
 
-            <div className="section" style={{ display:"flex", gap:"1rem", alignItems:"center", flexWrap:"wrap", justifyContent:"space-between" }}>
-              <button className="btn btn-danger" onClick={clearCart}>Vaciar carrito</button>
-              <div style={{ marginLeft:"auto", textAlign:"right" }}>
-                <div><strong>Artículos:</strong> {totalItems}</div>
-                <div><strong>Total:</strong> {currency(totalPrice)}</div>
-                <button className="btn btn-primary" style={{ marginTop:".5rem" }} onClick={() => navigate("/resumen")}>
-                  Finalizar compra
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginTop: "1rem",
+                alignItems: "center",
+                gap: "1rem",
+                flexWrap: "wrap"
+              }}
+            >
+              <button className="btn btn-secondary" type="button" onClick={() => navigate("/")} aria-label="Seguir comprando">
+                ← Seguir comprando
+              </button>
+
+              <div style={{ marginLeft: "auto", textAlign: "right" }}>
+                <div style={{ fontSize: 18, fontWeight: 700 }}>
+                  Total: ${totalPrice.toFixed(2)}
+                </div>
+                <button
+                  className="btn btn-primary"
+                  type="button"
+                  disabled={status.loading || items.length === 0}
+                  onClick={handleCheckout}
+                  aria-busy={status.loading}
+                  style={{ marginTop: ".5rem" }}
+                >
+                  {status.loading ? "Procesando..." : "Finalizar compra"}
                 </button>
               </div>
             </div>
-          </>
+
+            {status.error && <p style={{ color: "#b91c1c", marginTop: ".75rem" }}>{status.error}</p>}
+            {status.ok && <p style={{ color: "#16a34a", marginTop: ".75rem" }}>{status.ok}</p>}
+          </section>
         )}
       </main>
     </div>
   );
 }
-export default Carrito;

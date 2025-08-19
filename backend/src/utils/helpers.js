@@ -21,13 +21,16 @@ export async function withTransaction(cb, userEmail = null) {
   try {
     await client.query("BEGIN");
     if (userEmail) {
-      await client.query(`SET LOCAL app.user_email = $1`, [userEmail]);
+      await client.query(
+        "SELECT set_config('app.user_email', $1, true)",
+        [userEmail]
+      );
     }
     const result = await cb(client);
     await client.query("COMMIT");
     return result;
   } catch (err) {
-    await client.query("ROLLBACK");
+    try { await client.query("ROLLBACK"); } catch {}
     throw err;
   } finally {
     client.release();
@@ -35,14 +38,18 @@ export async function withTransaction(cb, userEmail = null) {
 }
 
 /** Construye SQL dinámico para listado de productos con filtros/sort. */
-export function buildProductsQuery({ categoria, q, sort } = {}) {
+export function buildProductsQuery({ categoria, categoriaId, q, sort } = {}) {
   const params = [];
   const where = [];
 
-  if (categoria) {
+  if (categoriaId) {
+    params.push(Number(categoriaId));
+    where.push(`c.id = $${params.length}`);
+  } else if (categoria) {
     params.push(categoria);
     where.push(`c.nombre = $${params.length}`);
   }
+
   if (q && q.trim()) {
     params.push(`%${q.trim()}%`);
     where.push(`(p.nombre ILIKE $${params.length} OR p.descripcion ILIKE $${params.length})`);
@@ -50,7 +57,7 @@ export function buildProductsQuery({ categoria, q, sort } = {}) {
 
   let sql = `
     SELECT p.id, p.nombre, p.descripcion, p.precio, p.imagen, p.estado, p.stock,
-           c.nombre AS categoria
+           c.id AS categoria_id, c.nombre AS categoria
       FROM productos p
       JOIN categorias c ON c.id = p.categoria_id
   `;
@@ -61,9 +68,10 @@ export function buildProductsQuery({ categoria, q, sort } = {}) {
     "nombre-desc": "p.nombre DESC",
     "precio-asc": "p.precio ASC",
     "precio-desc": "p.precio DESC",
-    "estado": "CASE WHEN p.estado='disponible' THEN 0 ELSE 1 END, p.nombre ASC"
+    "estado": "CASE WHEN p.estado='disponible' THEN 0 ELSE 1 END, p.nombre ASC",
   };
   sql += ` ORDER BY ${sortMap[sort] || "p.nombre ASC"}`;
 
   return { sql, params };
 }
+

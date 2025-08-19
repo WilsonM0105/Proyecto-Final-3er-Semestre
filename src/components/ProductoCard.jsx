@@ -9,30 +9,49 @@ function ProductoCard({ producto }) {
   const disponible = producto.estado === "disponible";
 
   return (
-    <div className="card" style={{ width: 300 }}>
-      <img className="card-img" src={producto.imagen} alt={producto.nombre} />
+    <article className="card">
+      <img
+        className="card-img"
+        src={producto.imagen}
+        alt={producto.nombre}
+        loading="lazy"
+      />
+
       <div className="card-body">
-        <h3 style={{ margin: "0 0 .25rem 0" }}>{producto.nombre}</h3>
-        <p className="muted" style={{ margin: 0 }}><strong>Precio:</strong> ${producto.precio}</p>
-        <p className="muted" style={{ margin: 0 }}><strong>Categoría:</strong> {producto.categoria}</p>
+        <h3 style={{ margin: 0 }}>{producto.nombre}</h3>
+
+        <p className="muted" style={{ margin: 0 }}>
+          <strong>Precio:</strong> ${Number(producto.precio).toFixed(2)}
+        </p>
+        <p className="muted" style={{ margin: 0 }}>
+          <strong>Categoría:</strong> {producto.categoria}
+        </p>
+
         <p style={{ marginTop: ".4rem" }}>
           <span className={`chip ${disponible ? "chip--ok" : "chip--off"}`}>
-            {producto.estado}
+            {disponible ? "Disponible" : "No disponible"}
           </span>
         </p>
 
-        <div style={{ display:"flex", gap:".5rem", justifyContent:"space-between" }}>
-          <Link to={`/producto/${producto.id}${location.search}`}>Ver detalle</Link>
+        <div className="card-footer">
+          <Link className="btn btn-secondary" to={`/producto/${producto.id}${location.search}`}>
+            Ver detalle
+          </Link>
+
           <button
             className="btn btn-primary"
             disabled={!disponible}
-            onClick={() => { addItem(producto, 1); showToast("Producto añadido al carrito","success"); }}
+            onClick={() => {
+              addItem(producto, 1);
+              showToast("Producto añadido al carrito", "success");
+            }}
           >
             Añadir
           </button>
         </div>
       </div>
-    </div>
+    </article>
   );
 }
+
 export default ProductoCard;

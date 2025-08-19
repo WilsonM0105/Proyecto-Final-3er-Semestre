@@ -1,19 +1,30 @@
 import jwt from "jsonwebtoken";
 
 export function authRequired(req, res, next) {
-  const header = req.headers.authorization || "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : null;
-  if (!token) return res.status(401).json({ error: "Token faltante" });
   try {
+    const auth = req.headers.authorization || "";
+    const [, token] = auth.split(" ");
+    if (!token) {
+      return res.status(401).json({ error: "Token requerido" });
+    }
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ error: "Falta JWT_SECRET en el backend" });
+    }
     const payload = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = payload; // { id, email, rol }
+    // payload típicamente: { id, email, rol, iat, exp }
+    req.user = payload;
     return next();
-  } catch {
-    return res.status(401).json({ error: "Token inválido" });
+  } catch (err) {
+    return res.status(401).json({ error: "Token inválido o expirado" });
   }
 }
 
-export function isAdmin(req, res, next) {
-  if (req.user?.rol !== "admin") return res.status(403).json({ error: "Solo admin" });
-  next();
+export function requireAdmin(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json({ error: "No autenticado" });
+  }
+  if (req.user.rol !== "admin") {
+    return res.status(403).json({ error: "Requiere rol admin" });
+  }
+  return next();
 }

@@ -1,3 +1,4 @@
+// backend/src/routes/productoRoutes.js
 import { Router } from "express";
 import {
   getProductos,
@@ -5,9 +6,9 @@ import {
   crearProducto,
   actualizarProducto,
   eliminarProducto,
-  cambiarEstadoProducto
+  cambiarEstadoProducto,
 } from "../controllers/productoController.js";
-import { authRequired, isAdmin } from "../middlewares/authMiddleware.js";
+import { authRequired, requireAdmin } from "../middlewares/authMiddleware.js";
 
 const router = Router();
 
@@ -16,9 +17,9 @@ router.get("/", getProductos);
 router.get("/:id", getProductoById);
 
 // Admin
-router.post("/", authRequired, isAdmin, crearProducto);
-router.put("/:id", authRequired, isAdmin, actualizarProducto);
-router.delete("/:id", authRequired, isAdmin, eliminarProducto);
-router.patch("/:id/estado", authRequired, isAdmin, cambiarEstadoProducto);
+router.post("/", authRequired, requireAdmin, crearProducto);
+router.put("/:id", authRequired, requireAdmin, actualizarProducto);
+router.delete("/:id", authRequired, requireAdmin, eliminarProducto);
+router.patch("/:id/estado", authRequired, requireAdmin, cambiarEstadoProducto);
 
 export default router;

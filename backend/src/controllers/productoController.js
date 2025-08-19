@@ -1,100 +1,114 @@
+// backend/src/controllers/productoController.js
+import pool from "../config/db.js";
+import { withTransaction } from "../utils/helpers.js";
 import {
   listProductos,
-  getProductoById as getProductoByIdModel,
+  getProductoById as getProdModel,
   createProducto,
   updateProducto,
   deleteProducto,
   changeEstadoProducto
 } from "../models/productoModel.js";
-import { withTransaction } from "../utils/helpers.js";
 
-// GET /api/productos
 export async function getProductos(req, res) {
   try {
-    const { categoria, q, sort } = req.query;
-    const productos = await listProductos({ categoria, q, sort });
-    return res.json(productos);
-  } catch (err) {
-    console.error(err);
+    // 👇 ¡IMPORTANTE! incluir categoriaId
+    const { categoriaId, categoria, q, sort } = req.query;
+    const client = await pool.connect();
+    try {
+      const data = await listProductos({ categoriaId, categoria, q, sort }, client);
+      return res.json(data);
+    } finally {
+      client.release();
+    }
+  } catch (e) {
+    console.error(e);
     return res.status(500).json({ error: "Error listando productos" });
   }
 }
 
-// GET /api/productos/:id
 export async function getProductoById(req, res) {
   try {
-    const { id } = req.params;
-    const prod = await getProductoByIdModel(id);
-    if (!prod) return res.status(404).json({ error: "No encontrado" });
-    return res.json(prod);
-  } catch (err) {
-    console.error(err);
+    const id = Number(req.params.id);
+    const client = await pool.connect();
+    try {
+      const p = await getProdModel(id, client);
+      if (!p) return res.status(404).json({ error: "Producto no encontrado" });
+      return res.json(p);
+    } finally {
+      client.release();
+    }
+  } catch (e) {
+    console.error(e);
     return res.status(500).json({ error: "Error obteniendo producto" });
   }
 }
 
-// POST /api/productos  (admin)
 export async function crearProducto(req, res) {
-  const data = req.body; // { nombre, descripcion, precio, imagen, estado, categoriaNombre, stock }
   try {
+    const email = req.user?.email || "api";
     const nuevo = await withTransaction(async (client) => {
-      return await createProducto(data, client);
-    }, req.user?.email);
+      return await createProducto(req.body, client);
+    }, email);
     return res.status(201).json(nuevo);
-  } catch (err) {
-    console.error(err);
-    const msg = err.message?.includes("Datos incompletos") ? err.message : "Error creando producto";
-    return res.status(400).json({ error: msg });
+  } catch (e) {
+    console.error(e);
+    return res.status(400).json({ error: e.message || "Error creando producto" });
   }
 }
 
-// PUT /api/productos/:id  (admin)
 export async function actualizarProducto(req, res) {
-  const { id } = req.params;
-  const data = req.body; // campos opcionales
   try {
+    const id = Number(req.params.id);
+    const email = req.user?.email || "api";
     const actualizado = await withTransaction(async (client) => {
-      return await updateProducto(id, data, client);
-    }, req.user?.email);
-
-    if (!actualizado) return res.status(404).json({ error: "No encontrado" });
+      return await updateProducto(id, req.body, client);
+    }, email);
+    if (!actualizado) return res.status(404).json({ error: "Producto no encontrado" });
     return res.json(actualizado);
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: "Error actualizando producto" });
+  } catch (e) {
+    console.error(e);
+    return res.status(400).json({ error: e.message || "Error actualizando producto" });
   }
 }
 
-// DELETE /api/productos/:id  (admin)
 export async function eliminarProducto(req, res) {
-  const { id } = req.params;
   try {
+    const id = Number(req.params.id);
+    const email = req.user?.email || "api";
     const ok = await withTransaction(async (client) => {
       return await deleteProducto(id, client);
-    }, req.user?.email);
+    }, email);
 
-    if (!ok) return res.status(404).json({ error: "No encontrado" });
+    if (!ok) return res.status(404).json({ error: "Producto no encontrado" });
     return res.json({ ok: true });
-  } catch (err) {
-    console.error(err);
+  } catch (e) {
+    if (e.code === "FK_PRODUCTO_EN_PEDIDOS") {
+      return res.status(409).json({
+        error:
+          "No puedes eliminar este producto porque tiene ventas registradas. Márcalo como 'no_disponible'.",
+      });
+    }
+    console.error(e);
     return res.status(500).json({ error: "Error eliminando producto" });
   }
 }
 
-// PATCH /api/productos/:id/estado  (admin)
 export async function cambiarEstadoProducto(req, res) {
-  const { id } = req.params;
-  const { estado } = req.body; // 'disponible' | 'no_disponible'
   try {
+    const id = Number(req.params.id);
+    const { estado } = req.body;
+    if (!estado) return res.status(400).json({ error: "Estado requerido" });
+
+    const email = req.user?.email || "api";
     const actualizado = await withTransaction(async (client) => {
       return await changeEstadoProducto(id, estado, client);
-    }, req.user?.email);
+    }, email);
 
-    if (!actualizado) return res.status(404).json({ error: "No encontrado" });
+    if (!actualizado) return res.status(404).json({ error: "Producto no encontrado" });
     return res.json(actualizado);
-  } catch (err) {
-    console.error(err);
-    const msg = err.message?.includes("Estado inválido") ? err.message : "Error cambiando estado";
-    return res.status(400).json({ error: msg });
+  } catch (e) {
+    console.error(e);
+    return res.status(400).json({ error: e.message || "Error cambiando estado" });
   }
 }

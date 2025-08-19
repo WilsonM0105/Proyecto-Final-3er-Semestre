@@ -1,47 +1,44 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
+  const isAdmin = user?.rol === "admin";
 
-  // Simulación: si hay un usuario guardado en localStorage, lo cargamos
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    const raw = localStorage.getItem("session");
+    if (raw) {
+      try {
+        const { user: u, token: t } = JSON.parse(raw);
+        setUser(u);
+        setToken(t);
+      } catch {
+        localStorage.removeItem("session");
+      }
     }
   }, []);
 
-  // Simulación de login con roles
-  const login = (email, password) => {
-    // Si el correo contiene "admin" => rol administrador
-    if (email.includes("admin")) {
-      const adminUser = { email, role: "admin" };
-      setUser(adminUser);
-      localStorage.setItem("user", JSON.stringify(adminUser));
-    } else {
-      // Rol usuario normal
-      const normalUser = { email, role: "user" };
-      setUser(normalUser);
-      localStorage.setItem("user", JSON.stringify(normalUser));
-    }
+  const setSession = (u, t) => {
+    setUser(u);
+    setToken(t);
+    localStorage.setItem("session", JSON.stringify({ user: u, token: t }));
   };
 
-  // Cerrar sesión
   const logout = () => {
     setUser(null);
-    localStorage.removeItem("user");
+    setToken(null);
+    localStorage.removeItem("session");
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, token, isAdmin, setSession, logout }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-// Hook para usar el contexto
 export function useAuth() {
   return useContext(AuthContext);
 }
